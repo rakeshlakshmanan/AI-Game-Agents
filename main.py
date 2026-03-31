@@ -55,15 +55,28 @@ def get_agent(agent_name: str, player: int, depth: int = None, game_name: str = 
     return agents[agent_name]()
 
 
+def _launch_gui(game_name: str, agent1, agent2, move_delay: int = 700):
+    """Open a tkinter window and play the game visually."""
+    from gui.game_window import TicTacToeWindow, Connect4Window
+    if game_name == 'ttt':
+        TicTacToeWindow(agent1, agent2, move_delay=move_delay).run()
+    else:
+        Connect4Window(agent1, agent2, move_delay=move_delay).run()
+
+
 def mode_play(args):
     """Watch two agents play a single game."""
-    game_class = get_game(args.game)
-    game = game_class()
-    game.reset()
-
     depth = args.depth if hasattr(args, 'depth') else None
     agent1 = get_agent(args.agent1, 1, depth=depth, game_name=args.game)
     agent2 = get_agent(args.agent2, -1, depth=depth, game_name=args.game)
+
+    if getattr(args, 'ui', False):
+        _launch_gui(args.game, agent1, agent2)
+        return
+
+    game_class = get_game(args.game)
+    game = game_class()
+    game.reset()
 
     print(f"\n=== {agent1.name} (X) vs {agent2.name} (O) ===")
     print(f"Game: {args.game.upper()}\n")
@@ -151,12 +164,18 @@ def mode_tournament(args):
 
 def mode_interactive(args):
     """Human plays against an AI agent."""
+    depth = args.depth if hasattr(args, 'depth') else 5
+    ai = get_agent(args.opponent if hasattr(args, 'opponent') else 'minimax', -1, depth=depth, game_name=args.game)
+
+    if getattr(args, 'ui', False):
+        from gui.game_window import HumanGUIAgent
+        human = HumanGUIAgent(1, "You")
+        _launch_gui(args.game, human, ai)
+        return
+
     game_class = get_game(args.game)
     game = game_class()
     game.reset()
-
-    depth = args.depth if hasattr(args, 'depth') else 5
-    ai = get_agent(args.opponent if hasattr(args, 'opponent') else 'minimax', -1, depth=depth, game_name=args.game)
 
     print(f"\n=== Interactive Mode: You (X) vs {ai.name} (O) ===")
     print(f"Game: {args.game.upper()}")
@@ -171,7 +190,6 @@ def mode_interactive(args):
     current_player = 1
     while True:
         if current_player == 1:
-            # Human
             valid = game.get_valid_moves()
             while True:
                 try:
@@ -241,16 +259,30 @@ def mode_full_experiment(args):
         # Agents
         default = DefaultOpponent(-1, 'Default')
 
+        # For Connect 4, train RL agents against RandomAgent (easier to beat,
+        # giving positive rewards early) as the state space is too large to
+        # learn from a smart opponent within a feasible number of episodes.
+        # For TTT, train against DefaultOpponent as usual.
+        training_opponent_ql = (
+            RandomAgent(-1, 'Random') if game_name == 'Connect4'
+            else DefaultOpponent(-1, 'Default')
+        )
+        training_opponent_dqn = (
+            RandomAgent(-1, 'Random') if game_name == 'Connect4'
+            else DefaultOpponent(-1, 'Default')
+        )
+        print(f"  Training opponent: {training_opponent_ql.name}")
+
         # --- Train RL Agents ---
         print(f"\n[1/4] Training Q-Learning on {game_name}...")
         ql_agent = QLearningAgent(1, 'QLearning')
-        ql_history = train_rl_agent(ql_agent, DefaultOpponent(-1, 'Default'), game_class, num_episodes=ql_episodes)
+        ql_history = train_rl_agent(ql_agent, training_opponent_ql, game_class, num_episodes=ql_episodes)
         ql_model_path = f'models/qlearning_{game_name.lower()}.pkl'
         ql_agent.save(ql_model_path)
 
         print(f"\n[2/4] Training DQN on {game_name}...")
         dqn_agent = DQNAgent(1, 'DQN', input_size=input_size, output_size=output_size)
-        dqn_history = train_rl_agent(dqn_agent, DefaultOpponent(-1, 'Default'), game_class, num_episodes=dqn_episodes)
+        dqn_history = train_rl_agent(dqn_agent, training_opponent_dqn, game_class, num_episodes=dqn_episodes)
         dqn_model_path = f'models/dqn_{game_name.lower()}.pt'
         dqn_agent.save(dqn_model_path)
 
@@ -312,7 +344,7 @@ def mode_full_experiment(args):
                 if i == j:
                     matrix[i, j] = 0.5
                     continue
-                res = run_tournament(all_agents[i], all_agents[j], game_class, num_games=N_GAMES // 2)
+                res = run_tournament(all_agents[i], all_agents[j], game_class, num_games=N_GAMES)
                 matrix[i, j] = res['agent1_win_rate']
 
         labels = [a.name for a in all_agents]
@@ -371,6 +403,7 @@ def main():
     parser.add_argument('--num-games', type=int, default=1000, dest='num_games', help='Number of tournament games')
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--verbose', action='store_true', help='Verbose output')
+    parser.add_argument('--ui', action='store_true', help='Show game in a GUI window (play / interactive modes)')
 
     args = parser.parse_args()
     set_seed(args.seed)
