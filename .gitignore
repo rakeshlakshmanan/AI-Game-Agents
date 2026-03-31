@@ -12,5 +12,5 @@ build/
 *.pkl
 plots/
 models/
-experiments/results/
+# experiments/results/ — kept in git (contains scalability findings)
 .DS_Store
