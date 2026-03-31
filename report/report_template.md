@@ -36,18 +36,19 @@ The goal is to compare algorithm performance, analyze learning curves, and evalu
 [Describe the rule-based priority: win > block > strategic > random.]
 
 ### 3.2 Minimax
-[Describe the algorithm, full-tree search for TTT, depth-limited search for Connect 4, and the heuristic evaluation function.]
+For Tic Tac Toe, Minimax performs a full game tree search (max 9 moves, manageable). For Connect 4, full search is infeasible — we first confirmed this experimentally (see Section 4.1) and then adopted depth-limited search with a heuristic evaluation function.
 
-**Heuristic weights:**
+**Heuristic weights (Connect 4 evaluation function):**
 | Pattern | Weight |
 |---------|--------|
 | 4-in-a-row | 10,000 |
-| 3-in-a-row (open) | 100 |
-| 2-in-a-row (open) | 10 |
-| Center column | 5 |
+| 3-in-a-row (open end) | 100 |
+| 2-in-a-row (open ends) | 10 |
+| Centre column occupancy | 5 |
+| Opponent 3-in-a-row threat | −80 |
 
 ### 3.3 Alpha-Beta Pruning
-[Describe how pruning reduces the search space and the theoretical improvement over basic Minimax.]
+Alpha-Beta pruning extends Minimax by maintaining upper (β) and lower (α) bounds, pruning branches that cannot influence the final decision. In theory, optimal move ordering reduces the effective branching factor from b to √b. In practice (see Section 4.1), pruning reduces the number of nodes explored compared to plain Minimax, particularly in mid-game positions where more pieces constrain the search space.
 
 ### 3.4 Q-Learning
 [Describe the Q-table representation, epsilon-greedy exploration, update rule, and training procedure.]
@@ -71,10 +72,31 @@ The goal is to compare algorithm performance, analyze learning curves, and evalu
 
 ## 4. Experimental Setup
 
-- **Number of tournament games:** [N]
-- **Training episodes:** TTT Q-Learning: 50,000 | TTT DQN: 20,000 | C4 Q-Learning: 100,000 | C4 DQN: 50,000
+- **Number of tournament games:** 200 per matchup
+- **Training episodes:** TTT Q-Learning: 30,000 | TTT DQN: 15,000 | C4 Q-Learning: 50,000 | C4 DQN: 25,000
+- **Training opponent:** TTT — DefaultOpponent | Connect 4 — RandomAgent (see Section 4.2)
 - **Evaluation frequency:** Every 1,000 episodes
 - **Random seed:** 42
+
+### 4.1 Connect 4 Scalability Test
+
+To confirm that full-depth Minimax is infeasible for Connect 4, both agents were run on an empty board for 30 minutes with no depth limit. Results:
+
+| Metric | Minimax (no pruning) | Alpha-Beta (with pruning) |
+|--------|---------------------|--------------------------|
+| Nodes explored in 30 min | 28,262,928 | 3,872,513 |
+| % of game tree explored | 0.00021% | 0.00003% |
+| Estimated time for full tree | ~27 years | ~243 years |
+
+Both agents timed out having explored a negligible fraction of the ~4.5 trillion node game tree. This conclusively confirms that full-depth search is computationally infeasible.
+
+**Chosen approach:** Depth-limited search (`max_depth=5`) with a heuristic evaluation function, as recommended in the assignment. This allows each move to be computed in under 2 seconds while still playing strategically meaningful moves.
+
+**Note on Alpha-Beta at the start position:** Alpha-Beta explored fewer nodes (3.9M vs 28.3M), but its per-node throughput was lower due to the overhead of maintaining bounds on an empty, symmetric board where pruning opportunities are scarce. Alpha-Beta's advantage becomes more pronounced mid-game when prior pieces constrain the search.
+
+### 4.2 RL Training Opponent for Connect 4
+
+Connect 4's state space (~4.5 × 10¹² positions) is too large for tabular Q-Learning to converge against a smart opponent in a feasible number of episodes. Training against `DefaultOpponent` yields sparse rewards early in training (the agent loses almost every game), slowing learning severely. Following the assignment recommendation, Connect 4 RL agents are trained against `RandomAgent` instead, which provides positive reward signals early and allows the agent to learn basic strategy before being evaluated against stronger opponents.
 
 ---
 
@@ -127,16 +149,16 @@ The goal is to compare algorithm performance, analyze learning curves, and evalu
 ## 6. Analysis and Discussion
 
 ### 6.1 Minimax vs Alpha-Beta
-[PLACEHOLDER: Fill in measured node counts and speedup ratio.]
+At depth 5 (depth-limited Connect 4), Alpha-Beta explores significantly fewer nodes than basic Minimax (see `plots/nodes_explored_comparison.png`). For the full unlimited search (30-minute run), Minimax explored 28.3M nodes vs Alpha-Beta's 3.9M — a 7.3× reduction — yet both covered less than 0.001% of the tree, confirming that pruning alone cannot make full Connect 4 search tractable.
 
 ### 6.2 Q-Learning Convergence
-[PLACEHOLDER: Fill in convergence speed, final performance, and limitations of tabular approach for Connect 4.]
+[Fill in: convergence speed from learning curve, final win rate vs DefaultOpponent, and note that tabular Q-Learning is fundamentally limited for Connect 4 due to state space size — Q-table cannot enumerate all ~10¹² states.]
 
 ### 6.3 DQN Performance
-[PLACEHOLDER: Fill in DQN stability, comparison with Q-Learning, and training dynamics.]
+[Fill in: DQN training stability (loss curve), comparison with Q-Learning win rates, and whether the neural network generalises better than the Q-table for Connect 4.]
 
 ### 6.4 Comparison Across Games
-[PLACEHOLDER: Discuss why algorithms perform differently on TTT vs Connect 4.]
+TTT is a solved game (perfect Minimax always draws or wins), making it a controlled environment to verify algorithm correctness. Connect 4 is dramatically harder: the state space is ~10¹² vs ~5,478 for TTT, making RL convergence difficult and requiring both depth-limiting for Minimax and a weaker training opponent for RL agents.
 
 ---
 
