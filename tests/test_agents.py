@@ -11,12 +11,11 @@ from agents.minimax_agent import MiniMaxAgent
 from agents.alphabeta_agent import AlphaBetaAgent
 from agents.qlearning_agent import QLearningAgent
 
-
 class TestDefaultOpponent:
     def test_wins_if_possible_ttt(self):
         game = TicTacToe()
         game.reset()
-        # X X _ / _ _ _ / _ _ _  => X can win at position 2
+                                                           
         game.board[0] = 1
         game.board[1] = 1
         agent = DefaultOpponent(1, 'Default')
@@ -26,7 +25,7 @@ class TestDefaultOpponent:
     def test_blocks_opponent_ttt(self):
         game = TicTacToe()
         game.reset()
-        # O O _ / _ _ _ / _ _ _  => X should block at 2
+                                                       
         game.board[0] = -1
         game.board[1] = -1
         agent = DefaultOpponent(1, 'Default')
@@ -36,19 +35,17 @@ class TestDefaultOpponent:
     def test_wins_before_block(self):
         game = TicTacToe()
         game.reset()
-        # X X _ and O O _ simultaneously, X should win not block
+                                                                
         game.board[0] = 1
         game.board[1] = 1
         game.board[3] = -1
         game.board[4] = -1
         agent = DefaultOpponent(1, 'Default')
         move = agent.get_move(game)
-        assert move == 2  # win at 2, not block at 5
-
+        assert move == 2                            
 
 class TestMiniMaxAgent:
     def test_never_loses_ttt(self):
-        """Minimax should never lose at TTT (can draw or win)."""
         import random
         random.seed(0)
         mm = MiniMaxAgent(1, 'MiniMax', max_depth=None)
@@ -79,10 +76,8 @@ class TestMiniMaxAgent:
         move = mm.get_move(game)
         assert move in game.get_valid_moves()
 
-
 class TestAlphaBetaAgent:
     def test_same_result_as_minimax(self):
-        """AlphaBeta should choose the same (or equally good) move as MiniMax on TTT."""
         game = TicTacToe()
         game.reset()
         game.make_move(0, 1)
@@ -93,7 +88,7 @@ class TestAlphaBetaAgent:
 
         mm_move = mm.get_move(game)
         ab_move = ab.get_move(game)
-        # Both should be valid moves
+                                    
         assert mm_move in game.get_valid_moves()
         assert ab_move in game.get_valid_moves()
 
@@ -105,7 +100,6 @@ class TestAlphaBetaAgent:
         mm.get_move(game)
         ab.get_move(game)
         assert ab.nodes_explored < mm.nodes_explored
-
 
 class TestQLearningAgent:
     def test_q_table_updates(self):
