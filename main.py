@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-AI Game Agents - Main Entry Point
-CS7IS2 Assignment
-"""
-
 import argparse
 import os
 import sys
@@ -19,7 +13,6 @@ def set_seed(seed: int = 42):
     except ImportError:
         pass
 
-
 def get_game(game_name: str):
     from games.tic_tac_toe import TicTacToe
     from games.connect4 import Connect4
@@ -29,7 +22,6 @@ def get_game(game_name: str):
         return Connect4
     else:
         raise ValueError(f"Unknown game: {game_name}")
-
 
 def get_agent(agent_name: str, player: int, depth: int = None, game_name: str = 'ttt'):
     from agents.random_agent import RandomAgent
@@ -54,18 +46,14 @@ def get_agent(agent_name: str, player: int, depth: int = None, game_name: str = 
         raise ValueError(f"Unknown agent: {agent_name}")
     return agents[agent_name]()
 
-
 def _launch_gui(game_name: str, agent1, agent2, move_delay: int = 700):
-    """Open a tkinter window and play the game visually."""
     from gui.game_window import TicTacToeWindow, Connect4Window
     if game_name == 'ttt':
         TicTacToeWindow(agent1, agent2, move_delay=move_delay).run()
     else:
         Connect4Window(agent1, agent2, move_delay=move_delay).run()
 
-
 def mode_play(args):
-    """Watch two agents play a single game."""
     depth = args.depth if hasattr(args, 'depth') else None
     agent1 = get_agent(args.agent1, 1, depth=depth, game_name=args.game)
     agent2 = get_agent(args.agent2, -1, depth=depth, game_name=args.game)
@@ -103,9 +91,7 @@ def mode_play(args):
             break
         current = agent2 if current is agent1 else agent1
 
-
 def mode_train(args):
-    """Train an RL agent and optionally save learning curve plots."""
     from experiments.runner import train_rl_agent
     from agents.default_opponent import DefaultOpponent
     from agents.random_agent import RandomAgent
@@ -127,7 +113,7 @@ def mode_train(args):
         print(f"Agent '{args.agent}' does not require training.")
         return
 
-    # Connect 4 trains against Random; TTT trains against Default
+                                                                 
     if args.game == 'c4':
         opponent = RandomAgent(-1, 'Random')
     else:
@@ -148,7 +134,7 @@ def mode_train(args):
         print(f"  Draw rate: {final['draw_rate']:.2%}")
         print(f"  Loss rate: {final['loss_rate']:.2%}")
 
-        # Generate learning curve plot if --plot-dir specified
+                                                              
         plot_dir = getattr(args, 'plot_dir', None)
         if plot_dir:
             import matplotlib
@@ -179,9 +165,7 @@ def mode_train(args):
             plt.close()
             print(f"Learning curve saved to {plot_path}")
 
-
 def mode_tournament(args):
-    """Run a tournament between two agents."""
     from experiments.runner import run_tournament
 
     game_class = get_game(args.game)
@@ -199,9 +183,7 @@ def mode_tournament(args):
     print(f"  Draws:           {results['draws']} ({results['draw_rate']:.2%})")
     print(f"  Avg game length: {results['avg_game_length']:.1f} moves")
 
-
 def mode_interactive(args):
-    """Human plays against an AI agent."""
     depth = args.depth if hasattr(args, 'depth') else 5
     ai = get_agent(args.opponent if hasattr(args, 'opponent') else 'minimax', -1, depth=depth, game_name=args.game)
 
@@ -257,9 +239,7 @@ def mode_interactive(args):
             break
         current_player = -current_player
 
-
 def mode_vs_default(args):
-    """Run all algorithms vs Default with fixed first-mover, save results to CSV."""
     import pandas as pd
     from experiments.runner import run_tournament
     from agents.default_opponent import DefaultOpponent
@@ -275,7 +255,7 @@ def mode_vs_default(args):
     input_size = 9 if args.game == 'ttt' else 42
     output_size = 9 if args.game == 'ttt' else 7
 
-    # Load trained RL agents
+                            
     ql = QLearningAgent(1, 'QLearning')
     ql_path = f'models/qlearning_{args.game}.pkl'
     if os.path.exists(ql_path):
@@ -319,7 +299,7 @@ def mode_vs_default(args):
 
             res = run_tournament(a1, a2, game_class, num_games=num_games, alternate=False)
 
-            # Compute algo win/draw/loss rate (algo may be a1 or a2)
+                                                                    
             if combo == 'algo_first':
                 algo_wins  = res['agent1_wins']
                 algo_losses = res['agent2_wins']
@@ -352,9 +332,7 @@ def mode_vs_default(args):
     pd.DataFrame(rows).to_csv(csv_path, index=False)
     print(f"\nResults saved to {csv_path}")
 
-
 def mode_head_to_head(args):
-    """Run all 12 ordered head-to-head pairs with fixed first mover, save to CSV."""
     import pandas as pd
     from experiments.runner import run_tournament
     from agents.minimax_agent import MiniMaxAgent
@@ -369,7 +347,7 @@ def mode_head_to_head(args):
     input_size = 9 if args.game == 'ttt' else 42
     output_size = 9 if args.game == 'ttt' else 7
 
-    # Load trained RL agents
+                            
     ql = QLearningAgent(1, 'QLearning')
     ql_path = f'models/qlearning_{args.game}.pkl'
     if os.path.exists(ql_path):
@@ -402,7 +380,7 @@ def mode_head_to_head(args):
     print("-" * 65)
 
     rows = []
-    # 12 ordered pairs: every agent vs every other agent (A vs B ≠ B vs A)
+                                                                          
     for i, a1 in enumerate(agents):
         for j, a2 in enumerate(agents):
             if i == j:
@@ -439,9 +417,7 @@ def mode_head_to_head(args):
     pd.DataFrame(rows).to_csv(csv_path, index=False)
     print(f"\nResults saved to {csv_path}")
 
-
 def mode_generate_plots(args):
-    """Read all result CSVs and generate clear, annotated plots."""
     import pandas as pd
     import numpy as np
     import matplotlib
@@ -462,7 +438,6 @@ def mode_generate_plots(args):
     SECOND_EDGE = '#7f8c8d'
 
     def _bar_label(ax, x, val, base=0, fontsize=9):
-        """Print percentage label centred in bar segment if tall enough."""
         if val >= 0.06:
             ax.text(x, base + val / 2, f'{val:.0%}',
                     ha='center', va='center', fontsize=fontsize,
@@ -473,9 +448,9 @@ def mode_generate_plots(args):
                 ha='center', va='bottom', fontsize=fontsize,
                 color='#2c3e50', fontweight='bold')
 
-    # ------------------------------------------------------------------ #
-    # 1. vs Default — one figure per game                                  #
-    # ------------------------------------------------------------------ #
+                                                                          
+                                                                            
+                                                                          
     def plot_vs_default(df, game_label, filename):
         fig, ax = plt.subplots(figsize=(14, 7))
         fig.patch.set_facecolor('#ffffff')
@@ -507,7 +482,7 @@ def mode_generate_plots(args):
                 _bar_label(ax, x, d, w)
                 _bar_label(ax, x, l, w + d)
 
-                # small "1st"/"2nd" label below x-axis tick
+                                                           
                 ax.text(x, -0.06, lbl, ha='center', va='top', fontsize=8,
                         color=edge, fontweight='bold',
                         transform=ax.get_xaxis_transform())
@@ -536,9 +511,9 @@ def mode_generate_plots(args):
         plt.close()
         print(f"  Saved {filename}")
 
-    # ------------------------------------------------------------------ #
-    # 2. Head-to-Head heatmaps                                             #
-    # ------------------------------------------------------------------ #
+                                                                          
+                                                                            
+                                                                          
     def plot_head_to_head(df, game_label, filename):
         algos   = ALGOS
         n       = len(algos)
@@ -565,7 +540,7 @@ def mode_generate_plots(args):
             f'Row agent = first mover (left)  |  Row agent = second mover (right)',
             fontsize=13, fontweight='bold')
 
-        # Build annotation: "W XX%\nD YY%\nL ZZ%" for each cell
+                                                               
         def build_annot(win_m, draw_m, loss_m):
             annot = []
             for i in range(n):
@@ -583,11 +558,11 @@ def mode_generate_plots(args):
                 annot.append(row_ann)
             return annot
 
-        # Left: row goes first
+                              
         annot_first = build_annot(first_wins, first_draws, first_loss)
         mask_first  = np.isnan(first_wins)
 
-        # Right: row goes second (swap axes)
+                                            
         second_wins  = first_loss.T.copy()
         second_draws = first_draws.T.copy()
         second_loss  = first_wins.T.copy()
@@ -618,9 +593,9 @@ def mode_generate_plots(args):
         plt.close()
         print(f"  Saved {filename}")
 
-    # ------------------------------------------------------------------ #
-    # 3. Overall comparison                                                #
-    # ------------------------------------------------------------------ #
+                                                                          
+                                                                            
+                                                                          
     def plot_overall(ttt_df, c4_df, filename):
         algos = ALGOS
         n     = len(algos)
@@ -670,9 +645,9 @@ def mode_generate_plots(args):
         plt.close()
         print(f"  Saved {filename}")
 
-    # ------------------------------------------------------------------ #
-    # 4. Learning curves summary 2×2                                       #
-    # ------------------------------------------------------------------ #
+                                                                          
+                                                                            
+                                                                          
     def plot_learning_curves_summary(filename):
         curve_files = {
             'TTT — Q-Learning': os.path.join(plot_dir, 'qlearning_ttt_learning_curve.png'),
@@ -698,9 +673,9 @@ def mode_generate_plots(args):
         plt.close()
         print(f"  Saved {filename}")
 
-    # ------------------------------------------------------------------ #
-    # Run all                                                              #
-    # ------------------------------------------------------------------ #
+                                                                          
+                                                                            
+                                                                          
     print(f"\nGenerating plots → {plot_dir}/\n")
 
     ttt_vs  = pd.read_csv(os.path.join(results_dir, 'ttt_vs_default.csv'))
@@ -717,9 +692,7 @@ def mode_generate_plots(args):
 
     print(f"\nDone. All plots saved to {plot_dir}/")
 
-
 def mode_full_experiment(args):
-    """Run the complete experiment suite."""
     import json
     import pandas as pd
     from experiments.runner import run_tournament, train_rl_agent
@@ -739,7 +712,7 @@ def mode_full_experiment(args):
     os.makedirs('models', exist_ok=True)
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
-    N_GAMES = 200  # quick run; increase for final paper
+    N_GAMES = 200                                       
 
     print("\n" + "="*60)
     print("FULL EXPERIMENT SUITE")
@@ -754,13 +727,13 @@ def mode_full_experiment(args):
         ql_episodes = 30000 if game_name == 'TTT' else 50000
         dqn_episodes = 15000 if game_name == 'TTT' else 25000
 
-        # Agents
+                
         default = DefaultOpponent(-1, 'Default')
 
-        # For Connect 4, train RL agents against RandomAgent (easier to beat,
-        # giving positive rewards early) as the state space is too large to
-        # learn from a smart opponent within a feasible number of episodes.
-        # For TTT, train against DefaultOpponent as usual.
+                                                                             
+                                                                           
+                                                                           
+                                                          
         training_opponent_ql = (
             RandomAgent(-1, 'Random') if game_name == 'Connect4'
             else DefaultOpponent(-1, 'Default')
@@ -771,7 +744,7 @@ def mode_full_experiment(args):
         )
         print(f"  Training opponent: {training_opponent_ql.name}")
 
-        # --- Train RL Agents ---
+                                 
         print(f"\n[1/4] Training Q-Learning on {game_name}...")
         ql_agent = QLearningAgent(1, 'QLearning')
         ql_history = train_rl_agent(ql_agent, training_opponent_ql, game_class, num_episodes=ql_episodes)
@@ -784,12 +757,12 @@ def mode_full_experiment(args):
         dqn_model_path = f'models/dqn_{game_name.lower()}.pt'
         dqn_agent.save(dqn_model_path)
 
-        # Save learning curves
+                              
         short = game_name.lower().replace('connect4', 'c4')
         plot_learning_curve(ql_history, 'Q-Learning', game_name, f'{short}_qlearning_curve.png')
         plot_learning_curve(dqn_history, 'DQN', game_name, f'{short}_dqn_curve.png')
 
-        # --- vs Default ---
+                            
         print(f"\n[3/4] Running vs-Default tournaments on {game_name}...")
         ql_agent.epsilon = 0.0
         dqn_agent.epsilon = 0.0
@@ -807,13 +780,13 @@ def mode_full_experiment(args):
 
         plot_vs_default(vs_default_results, game_name, f'{short}_vs_default.png')
 
-        # Save CSV
+                  
         rows = []
         for name, r in vs_default_results.items():
             rows.append({'agent': name, 'game': game_name, **{k: v for k, v in r.items() if k != 'results_per_game'}})
         pd.DataFrame(rows).to_csv(os.path.join(RESULTS_DIR, f'{short}_vs_default.csv'), index=False)
 
-        # overall data
+                      
         for agent in algo_agents:
             if agent.name not in overall_data:
                 overall_data[agent.name] = {}
@@ -821,7 +794,7 @@ def mode_full_experiment(args):
                 'win_rate': vs_default_results[agent.name]['agent1_win_rate']
             }
 
-        # --- Head-to-head ---
+                              
         print(f"\n[4/4] Head-to-head tournaments on {game_name}...")
         all_agents = [
             MiniMaxAgent(1, 'MiniMax', max_depth=mm_depth),
@@ -829,7 +802,7 @@ def mode_full_experiment(args):
             QLearningAgent(1, 'QLearning'),
             DQNAgent(1, 'DQN', input_size=input_size, output_size=output_size),
         ]
-        # load trained RL agents
+                                
         all_agents[2].load(ql_model_path)
         all_agents[2].epsilon = 0.0
         all_agents[3].load(dqn_model_path)
@@ -848,7 +821,7 @@ def mode_full_experiment(args):
         labels = [a.name for a in all_agents]
         plot_head_to_head(matrix, labels, game_name, f'{short}_head_to_head.png')
 
-        # --- Node comparison ---
+                                 
         if game_name == 'TTT':
             mm = MiniMaxAgent(1, 'MiniMax', max_depth=None)
             ab = AlphaBetaAgent(1, 'AlphaBeta', max_depth=None)
@@ -869,10 +842,10 @@ def mode_full_experiment(args):
         if game_name == 'Connect4':
             plot_nodes_explored(nodes_data, 'nodes_explored_comparison.png')
 
-    # Overall comparison
+                        
     plot_overall_comparison(overall_data, 'overall_comparison.png')
 
-    # Print summary table
+                         
     print("\n" + "="*60)
     print("SUMMARY: Win rates vs Default Opponent")
     print("="*60)
@@ -885,7 +858,6 @@ def mode_full_experiment(args):
 
     print("\nAll plots saved to plots/")
     print("All results saved to experiments/results/")
-
 
 def main():
     parser = argparse.ArgumentParser(description='AI Game Agents')
@@ -923,7 +895,6 @@ def main():
         mode_generate_plots(args)
     elif args.mode == 'full-experiment':
         mode_full_experiment(args)
-
 
 if __name__ == '__main__':
     main()
