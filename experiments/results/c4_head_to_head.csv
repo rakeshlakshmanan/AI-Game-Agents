@@ -1,0 +1,13 @@
+game,first_mover,second_mover,matchup,num_games,first_wins,draws,second_wins,first_win_rate,draw_rate,second_win_rate,avg_game_length
+C4,MiniMax,AlphaBeta,MiniMax vs AlphaBeta,100,0,0,100,0.0,0.0,1.0,36.0
+C4,MiniMax,QLearning,MiniMax vs QLearning,100,100,0,0,1.0,0.0,0.0,7.0
+C4,MiniMax,DQN,MiniMax vs DQN,100,100,0,0,1.0,0.0,0.0,11.0
+C4,AlphaBeta,MiniMax,AlphaBeta vs MiniMax,100,0,0,100,0.0,0.0,1.0,36.0
+C4,AlphaBeta,QLearning,AlphaBeta vs QLearning,100,100,0,0,1.0,0.0,0.0,7.0
+C4,AlphaBeta,DQN,AlphaBeta vs DQN,100,100,0,0,1.0,0.0,0.0,11.0
+C4,QLearning,MiniMax,QLearning vs MiniMax,100,0,0,100,0.0,0.0,1.0,14.0
+C4,QLearning,AlphaBeta,QLearning vs AlphaBeta,100,0,0,100,0.0,0.0,1.0,14.0
+C4,QLearning,DQN,QLearning vs DQN,100,100,0,0,1.0,0.0,0.0,7.0
+C4,DQN,MiniMax,DQN vs MiniMax,100,0,0,100,0.0,0.0,1.0,14.0
+C4,DQN,AlphaBeta,DQN vs AlphaBeta,100,0,0,100,0.0,0.0,1.0,14.0
+C4,DQN,QLearning,DQN vs QLearning,100,0,0,100,0.0,0.0,1.0,8.0
