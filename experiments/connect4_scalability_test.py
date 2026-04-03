@@ -1,15 +1,3 @@
-"""
-Connect 4 Scalability Test
-===========================
-Runs full (unlimited depth) Minimax and Alpha-Beta on Connect 4 for a fixed
-time budget and reports how many nodes were explored vs the theoretical maximum.
-
-Usage:
-    python experiments/connect4_scalability_test.py              # 30-minute run
-    python experiments/connect4_scalability_test.py --minutes 2  # quick test
-    python experiments/connect4_scalability_test.py --minutes 30 --out results/scalability.md
-"""
-
 import argparse
 import time
 import os
@@ -20,12 +8,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from games.connect4 import Connect4
 
-# ---------------------------------------------------------------------------
-# Time-limited Minimax (no depth cap — runs until timeout)
-# ---------------------------------------------------------------------------
+                                                                             
+                                                          
+                                                                             
 
 class TimedMiniMax:
-    """Minimax without depth limit, aborted after `time_limit` seconds."""
 
     def __init__(self, player: int, time_limit: float):
         self.player = player
@@ -97,13 +84,11 @@ class TimedMiniMax:
                 best = min(best, self._minimax(g, depth + 1, True))
             return best
 
-
-# ---------------------------------------------------------------------------
-# Time-limited Alpha-Beta (no depth cap — runs until timeout)
-# ---------------------------------------------------------------------------
+                                                                             
+                                                             
+                                                                             
 
 class TimedAlphaBeta:
-    """Alpha-Beta pruning without depth limit, aborted after `time_limit` seconds."""
 
     def __init__(self, player: int, time_limit: float):
         self.player = player
@@ -183,13 +168,11 @@ class TimedAlphaBeta:
                     break
             return best
 
-
-# ---------------------------------------------------------------------------
-# Run experiment
-# ---------------------------------------------------------------------------
+                                                                             
+                
+                                                                             
 
 def run_experiment(time_limit_seconds: float):
-    """Run both agents for time_limit_seconds and return results dict."""
     game = Connect4()
     game.reset()
 
@@ -221,18 +204,10 @@ def run_experiment(time_limit_seconds: float):
 
     return results
 
-
 def estimate_total_tree(results: dict, time_limit_seconds: float) -> dict:
-    """
-    Estimate how long full Connect 4 tree would take based on observed node rate.
-
-    Connect 4 upper bound: 7^42 ≈ 3.1 × 10^35 (very loose upper bound)
-    Realistic estimate (average branching ~4, depth ~36): ~4^36 ≈ 4.7 × 10^21
-    Known exact: 4,531,985,219,092 ≈ 4.5 × 10^12 terminal positions
-    """
-    # Using known Connect 4 game tree size
-    known_terminal_positions = 4_531_985_219_092  # ~4.5 trillion
-    # Internal nodes are roughly 3x terminal nodes in practice
+                                          
+    known_terminal_positions = 4_531_985_219_092                 
+                                                              
     estimated_total_nodes = known_terminal_positions * 3
 
     estimates = {}
@@ -250,9 +225,7 @@ def estimate_total_tree(results: dict, time_limit_seconds: float) -> dict:
             }
     return estimates
 
-
 def format_report(results: dict, estimates: dict, time_limit_seconds: float) -> str:
-    """Format findings as a markdown report."""
     minutes = time_limit_seconds / 60
     lines = []
 
@@ -321,7 +294,6 @@ def format_report(results: dict, estimates: dict, time_limit_seconds: float) -> 
 
     return "\n".join(lines)
 
-
 def _format_time(seconds: float) -> str:
     if seconds < 60:
         return f"{seconds:.1f} seconds"
@@ -334,10 +306,9 @@ def _format_time(seconds: float) -> str:
     else:
         return f"{seconds/(86400*365):.2e} years"
 
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
+                                                                             
+             
+                                                                             
 
 def main():
     parser = argparse.ArgumentParser(description="Connect 4 Scalability Test")
@@ -364,12 +335,11 @@ def main():
     print("\n" + "=" * 60)
     print(report)
 
-    # Save report
+                 
     os.makedirs(os.path.dirname(args.out) if os.path.dirname(args.out) else ".", exist_ok=True)
     with open(args.out, "w") as f:
         f.write(report)
     print(f"\nReport saved to: {args.out}")
-
 
 if __name__ == "__main__":
     main()
