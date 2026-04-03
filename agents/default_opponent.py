@@ -1,9 +1,7 @@
 import random
 from agents.base_agent import BaseAgent
 
-
 class DefaultOpponent(BaseAgent):
-    """Rule-based smart opponent: win > block > strategic > random."""
 
     def __init__(self, player: int, name: str = "DefaultOpponent", seed: int = None):
         super().__init__(player, name)
@@ -15,14 +13,14 @@ class DefaultOpponent(BaseAgent):
         if not valid_moves:
             return None
 
-        # 1. Win if possible
+                            
         for move in valid_moves:
             g = game.clone()
             g.make_move(move, self.player)
             if g.check_winner() == self.player:
                 return move
 
-        # 2. Block opponent win
+                               
         opponent = -self.player
         for move in valid_moves:
             g = game.clone()
@@ -30,7 +28,7 @@ class DefaultOpponent(BaseAgent):
             if g.check_winner() == opponent:
                 return move
 
-        # 3. Strategic placement
+                                
         from games.tic_tac_toe import TicTacToe
         from games.connect4 import Connect4
         if isinstance(game, TicTacToe):
@@ -44,5 +42,5 @@ class DefaultOpponent(BaseAgent):
                 if move in valid_moves:
                     return move
 
-        # 4. Random fallback
+                            
         return random.choice(valid_moves)
