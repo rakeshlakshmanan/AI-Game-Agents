@@ -105,12 +105,14 @@ def mode_play(args):
 
 
 def mode_train(args):
-    """Train an RL agent."""
+    """Train an RL agent and optionally save learning curve plots."""
     from experiments.runner import train_rl_agent
     from agents.default_opponent import DefaultOpponent
+    from agents.random_agent import RandomAgent
 
     game_class = get_game(args.game)
     episodes = args.episodes
+    game_label = args.game.upper()
 
     input_size = 9 if args.game == 'ttt' else 42
     output_size = 9 if args.game == 'ttt' else 7
@@ -125,8 +127,13 @@ def mode_train(args):
         print(f"Agent '{args.agent}' does not require training.")
         return
 
-    opponent = DefaultOpponent(-1, 'Default')
-    print(f"\nTraining {agent.name} on {args.game.upper()} for {episodes} episodes...")
+    # Connect 4 trains against Random; TTT trains against Default
+    if args.game == 'c4':
+        opponent = RandomAgent(-1, 'Random')
+    else:
+        opponent = DefaultOpponent(-1, 'Default')
+
+    print(f"\nTraining {agent.name} on {game_label} for {episodes} episodes vs {opponent.name}...")
     history = train_rl_agent(agent, opponent, game_class, num_episodes=episodes)
 
     os.makedirs('models', exist_ok=True)
@@ -140,6 +147,37 @@ def mode_train(args):
         print(f"  Win rate:  {final['win_rate']:.2%}")
         print(f"  Draw rate: {final['draw_rate']:.2%}")
         print(f"  Loss rate: {final['loss_rate']:.2%}")
+
+        # Generate learning curve plot if --plot-dir specified
+        plot_dir = getattr(args, 'plot_dir', None)
+        if plot_dir:
+            import matplotlib
+            matplotlib.use('Agg')
+            import matplotlib.pyplot as plt
+            os.makedirs(plot_dir, exist_ok=True)
+
+            episodes_x = [h['episode'] for h in history]
+            win_rates  = [h['win_rate']  for h in history]
+            draw_rates = [h['draw_rate'] for h in history]
+            loss_rates = [h['loss_rate'] for h in history]
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.plot(episodes_x, win_rates,  label='Win Rate',  color='#2ecc71', linewidth=2)
+            ax.plot(episodes_x, draw_rates, label='Draw Rate', color='#f39c12', linewidth=2, linestyle='--')
+            ax.plot(episodes_x, loss_rates, label='Loss Rate', color='#e74c3c', linewidth=2, linestyle=':')
+            ax.set_xlabel('Training Episodes', fontsize=12)
+            ax.set_ylabel('Rate', fontsize=12)
+            ax.set_title(f'{game_label}: {agent.name} Learning Curve (vs {opponent.name})', fontsize=14)
+            ax.legend(fontsize=11)
+            ax.grid(True, linestyle='--', alpha=0.7)
+            ax.set_ylim(0, 1.05)
+
+            plot_filename = f'{args.agent}_{args.game}_learning_curve.png'
+            plot_path = os.path.join(plot_dir, plot_filename)
+            plt.tight_layout()
+            plt.savefig(plot_path, dpi=300)
+            plt.close()
+            print(f"Learning curve saved to {plot_path}")
 
 
 def mode_tournament(args):
@@ -218,6 +256,466 @@ def mode_interactive(args):
                 print("Draw!")
             break
         current_player = -current_player
+
+
+def mode_vs_default(args):
+    """Run all algorithms vs Default with fixed first-mover, save results to CSV."""
+    import pandas as pd
+    from experiments.runner import run_tournament
+    from agents.default_opponent import DefaultOpponent
+    from agents.minimax_agent import MiniMaxAgent
+    from agents.alphabeta_agent import AlphaBetaAgent
+    from agents.qlearning_agent import QLearningAgent
+    from agents.dqn_agent import DQNAgent
+
+    game_class = get_game(args.game)
+    num_games = args.num_games
+    depth = args.depth
+    game_label = args.game.upper()
+    input_size = 9 if args.game == 'ttt' else 42
+    output_size = 9 if args.game == 'ttt' else 7
+
+    # Load trained RL agents
+    ql = QLearningAgent(1, 'QLearning')
+    ql_path = f'models/qlearning_{args.game}.pkl'
+    if os.path.exists(ql_path):
+        ql.load(ql_path)
+        ql.epsilon = 0.0
+    else:
+        print(f"  [warn] No saved model at {ql_path}, using untrained QLearning")
+
+    dqn = DQNAgent(1, 'DQN', input_size=input_size, output_size=output_size)
+    dqn_path = f'models/dqn_{args.game}.pt'
+    if os.path.exists(dqn_path):
+        dqn.load(dqn_path)
+        dqn.epsilon = 0.0
+    else:
+        print(f"  [warn] No saved model at {dqn_path}, using untrained DQN")
+
+    algorithms = [
+        MiniMaxAgent(1, 'MiniMax', max_depth=depth),
+        AlphaBetaAgent(1, 'AlphaBeta', max_depth=depth),
+        ql,
+        dqn,
+    ]
+
+    print(f"\n=== {game_label}: All Algorithms vs Default ({num_games} games, fixed first mover) ===\n")
+    print(f"{'Matchup':<35} {'First':>10} {'W':>6} {'D':>6} {'L':>6}")
+    print("-" * 65)
+
+    rows = []
+    for algo in algorithms:
+        for combo in ['algo_first', 'default_first']:
+            if combo == 'algo_first':
+                a1 = algo
+                a1.player = 1
+                a2 = DefaultOpponent(-1, 'Default')
+                first_mover = algo.name
+            else:
+                a1 = DefaultOpponent(1, 'Default')
+                a2 = algo
+                a2.player = -1
+                first_mover = 'Default'
+
+            res = run_tournament(a1, a2, game_class, num_games=num_games, alternate=False)
+
+            # Compute algo win/draw/loss rate (algo may be a1 or a2)
+            if combo == 'algo_first':
+                algo_wins  = res['agent1_wins']
+                algo_losses = res['agent2_wins']
+            else:
+                algo_wins  = res['agent2_wins']
+                algo_losses = res['agent1_wins']
+            algo_draws = res['draws']
+
+            matchup = f"{a1.name} vs {a2.name}"
+            print(f"{matchup:<35} {first_mover:>10} "
+                  f"{algo_wins/num_games:>5.1%} {algo_draws/num_games:>5.1%} {algo_losses/num_games:>5.1%}")
+
+            rows.append({
+                'game':            game_label,
+                'algorithm':       algo.name,
+                'first_mover':     first_mover,
+                'matchup':         matchup,
+                'num_games':       num_games,
+                'algo_wins':       algo_wins,
+                'algo_draws':      algo_draws,
+                'algo_losses':     algo_losses,
+                'algo_win_rate':   round(algo_wins  / num_games, 4),
+                'algo_draw_rate':  round(algo_draws / num_games, 4),
+                'algo_loss_rate':  round(algo_losses / num_games, 4),
+                'avg_game_length': round(res['avg_game_length'], 2),
+            })
+
+    os.makedirs(os.path.join('experiments', 'results'), exist_ok=True)
+    csv_path = os.path.join('experiments', 'results', f'{args.game}_vs_default.csv')
+    pd.DataFrame(rows).to_csv(csv_path, index=False)
+    print(f"\nResults saved to {csv_path}")
+
+
+def mode_head_to_head(args):
+    """Run all 12 ordered head-to-head pairs with fixed first mover, save to CSV."""
+    import pandas as pd
+    from experiments.runner import run_tournament
+    from agents.minimax_agent import MiniMaxAgent
+    from agents.alphabeta_agent import AlphaBetaAgent
+    from agents.qlearning_agent import QLearningAgent
+    from agents.dqn_agent import DQNAgent
+
+    game_class = get_game(args.game)
+    num_games = args.num_games
+    depth = args.depth
+    game_label = args.game.upper()
+    input_size = 9 if args.game == 'ttt' else 42
+    output_size = 9 if args.game == 'ttt' else 7
+
+    # Load trained RL agents
+    ql = QLearningAgent(1, 'QLearning')
+    ql_path = f'models/qlearning_{args.game}.pkl'
+    if os.path.exists(ql_path):
+        ql.load(ql_path)
+        ql.epsilon = 0.0
+    else:
+        print(f"  [warn] No saved model at {ql_path}, using untrained QLearning")
+
+    dqn = DQNAgent(1, 'DQN', input_size=input_size, output_size=output_size)
+    dqn_path = f'models/dqn_{args.game}.pt'
+    if os.path.exists(dqn_path):
+        dqn.load(dqn_path)
+        dqn.epsilon = 0.0
+    else:
+        print(f"  [warn] No saved model at {dqn_path}, using untrained DQN")
+
+    def make_agents():
+        return [
+            MiniMaxAgent(1, 'MiniMax', max_depth=depth),
+            AlphaBetaAgent(1, 'AlphaBeta', max_depth=depth),
+            ql,
+            dqn,
+        ]
+
+    agents = make_agents()
+    names = [a.name for a in agents]
+
+    print(f"\n=== {game_label}: Head-to-Head ({num_games} games, fixed first mover) ===\n")
+    print(f"{'Matchup':<35} {'First':>12} {'W':>6} {'D':>6} {'L':>6}")
+    print("-" * 65)
+
+    rows = []
+    # 12 ordered pairs: every agent vs every other agent (A vs B ≠ B vs A)
+    for i, a1 in enumerate(agents):
+        for j, a2 in enumerate(agents):
+            if i == j:
+                continue
+
+            a1.player = 1
+            a2.player = -1
+
+            res = run_tournament(a1, a2, game_class, num_games=num_games, alternate=False)
+
+            matchup = f"{a1.name} vs {a2.name}"
+            w = res['agent1_win_rate']
+            d = res['draw_rate']
+            l = res['agent2_win_rate']
+            print(f"{matchup:<35} {a1.name:>12} {w:>5.1%} {d:>5.1%} {l:>5.1%}")
+
+            rows.append({
+                'game':              game_label,
+                'first_mover':       a1.name,
+                'second_mover':      a2.name,
+                'matchup':           matchup,
+                'num_games':         num_games,
+                'first_wins':        res['agent1_wins'],
+                'draws':             res['draws'],
+                'second_wins':       res['agent2_wins'],
+                'first_win_rate':    round(w, 4),
+                'draw_rate':         round(d, 4),
+                'second_win_rate':   round(l, 4),
+                'avg_game_length':   round(res['avg_game_length'], 2),
+            })
+
+    os.makedirs(os.path.join('experiments', 'results'), exist_ok=True)
+    csv_path = os.path.join('experiments', 'results', f'{args.game}_head_to_head.csv')
+    pd.DataFrame(rows).to_csv(csv_path, index=False)
+    print(f"\nResults saved to {csv_path}")
+
+
+def mode_generate_plots(args):
+    """Read all result CSVs and generate clear, annotated plots."""
+    import pandas as pd
+    import numpy as np
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    import seaborn as sns
+
+    plot_dir = args.plot_dir or 'plots'
+    os.makedirs(plot_dir, exist_ok=True)
+    results_dir = os.path.join('experiments', 'results')
+
+    ALGOS  = ['MiniMax', 'AlphaBeta', 'QLearning', 'DQN']
+    WIN_C  = '#27ae60'
+    DRAW_C = '#f39c12'
+    LOSS_C = '#e74c3c'
+    FIRST_EDGE  = '#2c3e50'
+    SECOND_EDGE = '#7f8c8d'
+
+    def _bar_label(ax, x, val, base=0, fontsize=9):
+        """Print percentage label centred in bar segment if tall enough."""
+        if val >= 0.06:
+            ax.text(x, base + val / 2, f'{val:.0%}',
+                    ha='center', va='center', fontsize=fontsize,
+                    color='white', fontweight='bold')
+
+    def _annotate_top(ax, x, total, fontsize=8):
+        ax.text(x, total + 0.02, f'{total:.0%}',
+                ha='center', va='bottom', fontsize=fontsize,
+                color='#2c3e50', fontweight='bold')
+
+    # ------------------------------------------------------------------ #
+    # 1. vs Default — one figure per game                                  #
+    # ------------------------------------------------------------------ #
+    def plot_vs_default(df, game_label, filename):
+        fig, ax = plt.subplots(figsize=(14, 7))
+        fig.patch.set_facecolor('#ffffff')
+
+        algos = ALGOS
+        n = len(algos)
+        bar_w = 0.32
+        gap   = 1.1
+        positions = np.arange(n) * gap
+
+        for idx, algo in enumerate(algos):
+            for k, (fm_key, offset, edge, lbl) in enumerate([
+                (algo,      -bar_w / 2 - 0.02, FIRST_EDGE,  'Goes 1st'),
+                ('Default', +bar_w / 2 + 0.02, SECOND_EDGE, 'Goes 2nd'),
+            ]):
+                row = df[(df['algorithm'] == algo) & (df['first_mover'] == fm_key)]
+                if row.empty:
+                    continue
+                w = row['algo_win_rate'].values[0]
+                d = row['algo_draw_rate'].values[0]
+                l = row['algo_loss_rate'].values[0]
+                x = positions[idx] + offset
+
+                b1 = ax.bar(x, w, bar_w, color=WIN_C,  edgecolor=edge, linewidth=1.2, zorder=3)
+                b2 = ax.bar(x, d, bar_w, bottom=w,     color=DRAW_C, edgecolor=edge, linewidth=1.2, zorder=3)
+                b3 = ax.bar(x, l, bar_w, bottom=w + d, color=LOSS_C, edgecolor=edge, linewidth=1.2, zorder=3)
+
+                _bar_label(ax, x, w, 0)
+                _bar_label(ax, x, d, w)
+                _bar_label(ax, x, l, w + d)
+
+                # small "1st"/"2nd" label below x-axis tick
+                ax.text(x, -0.06, lbl, ha='center', va='top', fontsize=8,
+                        color=edge, fontweight='bold',
+                        transform=ax.get_xaxis_transform())
+
+        ax.set_xticks(positions)
+        ax.set_xticklabels(algos, fontsize=13, fontweight='bold')
+        ax.set_ylabel('Rate (Win / Draw / Loss)', fontsize=12)
+        ax.set_ylim(0, 1.12)
+        ax.set_title(f'{game_label}:  Algorithm  vs  Default Opponent\n'
+                     f'Dark border = algorithm goes first   |   Grey border = Default goes first',
+                     fontsize=13, fontweight='bold', pad=14)
+        ax.grid(axis='y', linestyle='--', alpha=0.4, zorder=0)
+        ax.spines[['top', 'right']].set_visible(False)
+
+        legend_handles = [
+            mpatches.Patch(facecolor=WIN_C,  edgecolor='grey', label='Algorithm Wins'),
+            mpatches.Patch(facecolor=DRAW_C, edgecolor='grey', label='Draw'),
+            mpatches.Patch(facecolor=LOSS_C, edgecolor='grey', label='Algorithm Loses'),
+            mpatches.Patch(facecolor='white', edgecolor=FIRST_EDGE,  linewidth=2, label='Algorithm goes 1st'),
+            mpatches.Patch(facecolor='white', edgecolor=SECOND_EDGE, linewidth=2, label='Default goes 1st'),
+        ]
+        ax.legend(handles=legend_handles, loc='upper right', fontsize=9,
+                  framealpha=0.9, edgecolor='lightgrey')
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, filename), dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  Saved {filename}")
+
+    # ------------------------------------------------------------------ #
+    # 2. Head-to-Head heatmaps                                             #
+    # ------------------------------------------------------------------ #
+    def plot_head_to_head(df, game_label, filename):
+        algos   = ALGOS
+        n       = len(algos)
+        idx_map = {a: i for i, a in enumerate(algos)}
+
+        first_wins  = np.full((n, n), np.nan)
+        first_draws = np.full((n, n), np.nan)
+        first_loss  = np.full((n, n), np.nan)
+
+        for _, row in df.iterrows():
+            fm = row['first_mover']
+            sm = row['second_mover']
+            if fm not in idx_map or sm not in idx_map:
+                continue
+            i, j = idx_map[fm], idx_map[sm]
+            first_wins[i][j]  = row['first_win_rate']
+            first_draws[i][j] = row['draw_rate']
+            first_loss[i][j]  = row['second_win_rate']
+
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        fig.patch.set_facecolor('#ffffff')
+        fig.suptitle(
+            f'{game_label}: Head-to-Head Results\n'
+            f'Row agent = first mover (left)  |  Row agent = second mover (right)',
+            fontsize=13, fontweight='bold')
+
+        # Build annotation: "W XX%\nD YY%\nL ZZ%" for each cell
+        def build_annot(win_m, draw_m, loss_m):
+            annot = []
+            for i in range(n):
+                row_ann = []
+                for j in range(n):
+                    if np.isnan(win_m[i][j]):
+                        row_ann.append('—')
+                    else:
+                        w = win_m[i][j]
+                        d = draw_m[i][j]
+                        l = loss_m[i][j]
+                        winner = ('ROW WINS' if w > l else
+                                  'COL WINS' if l > w else 'DRAW')
+                        row_ann.append(f'W {w:.0%}\nD {d:.0%}\nL {l:.0%}\n{winner}')
+                annot.append(row_ann)
+            return annot
+
+        # Left: row goes first
+        annot_first = build_annot(first_wins, first_draws, first_loss)
+        mask_first  = np.isnan(first_wins)
+
+        # Right: row goes second (swap axes)
+        second_wins  = first_loss.T.copy()
+        second_draws = first_draws.T.copy()
+        second_loss  = first_wins.T.copy()
+        annot_second = build_annot(second_wins, second_draws, second_loss)
+        mask_second  = np.isnan(second_wins)
+
+        for ax, win_m, annot, mask, title in [
+            (axes[0], first_wins,  annot_first,  mask_first,
+             'Row goes FIRST\n(value = row agent win rate)'),
+            (axes[1], second_wins, annot_second, mask_second,
+             'Row goes SECOND\n(value = row agent win rate)'),
+        ]:
+            sns.heatmap(
+                win_m, annot=annot, fmt='', cmap='RdYlGn',
+                xticklabels=algos, yticklabels=algos,
+                vmin=0, vmax=1, ax=ax, linewidths=1, linecolor='white',
+                annot_kws={'size': 8, 'va': 'center'},
+                cbar_kws={'label': 'Row Agent Win Rate', 'shrink': 0.8},
+                mask=mask,
+            )
+            ax.set_title(title, fontsize=11, fontweight='bold', pad=10)
+            ax.set_xlabel('Opponent (column agent)', fontsize=10)
+            ax.set_ylabel('Agent (row agent)', fontsize=10)
+            ax.tick_params(axis='both', labelsize=10)
+
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, filename), dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  Saved {filename}")
+
+    # ------------------------------------------------------------------ #
+    # 3. Overall comparison                                                #
+    # ------------------------------------------------------------------ #
+    def plot_overall(ttt_df, c4_df, filename):
+        algos = ALGOS
+        n     = len(algos)
+        bar_w = 0.18
+        x     = np.arange(n)
+
+        configs = [
+            (ttt_df, 'TTT  Goes 1st',  True,  -1.5*bar_w, '#2980b9', ''),
+            (ttt_df, 'TTT  Goes 2nd',  False, -0.5*bar_w, '#2980b9', '//'),
+            (c4_df,  'C4   Goes 1st',  True,  +0.5*bar_w, '#c0392b', ''),
+            (c4_df,  'C4   Goes 2nd',  False, +1.5*bar_w, '#c0392b', '//'),
+        ]
+
+        fig, ax = plt.subplots(figsize=(14, 7))
+        fig.patch.set_facecolor('#ffffff')
+
+        for df, label, is_first, offset, color, hatch in configs:
+            vals = []
+            for algo in algos:
+                fm_val = algo if is_first else 'Default'
+                row = df[(df['algorithm'] == algo) & (df['first_mover'] == fm_val)]
+                vals.append(row['algo_win_rate'].values[0] if not row.empty else 0)
+            bars = ax.bar(x + offset, vals, bar_w, color=color, hatch=hatch,
+                          edgecolor='white', linewidth=0.8, label=label, zorder=3)
+            for bar, val in zip(bars, vals):
+                if val > 0:
+                    ax.text(bar.get_x() + bar.get_width() / 2,
+                            bar.get_height() + 0.015,
+                            f'{val:.0%}', ha='center', va='bottom',
+                            fontsize=8, fontweight='bold', color='#2c3e50')
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(algos, fontsize=13, fontweight='bold')
+        ax.set_ylabel('Win Rate vs Default Opponent', fontsize=12)
+        ax.set_ylim(0, 1.18)
+        ax.set_title('Overall Win Rate vs Default Opponent — All Algorithms & Games\n'
+                     '(solid = algorithm goes first  |  hatched = Default goes first)',
+                     fontsize=13, fontweight='bold', pad=14)
+        ax.legend(fontsize=9, loc='upper left', framealpha=0.9,
+                  ncol=2, edgecolor='lightgrey')
+        ax.grid(axis='y', linestyle='--', alpha=0.4, zorder=0)
+        ax.spines[['top', 'right']].set_visible(False)
+        ax.axhline(0.5, color='grey', linestyle=':', linewidth=1, label='50% line')
+        ax.text(n - 0.1, 0.51, '50%', fontsize=8, color='grey', va='bottom')
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, filename), dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  Saved {filename}")
+
+    # ------------------------------------------------------------------ #
+    # 4. Learning curves summary 2×2                                       #
+    # ------------------------------------------------------------------ #
+    def plot_learning_curves_summary(filename):
+        curve_files = {
+            'TTT — Q-Learning': os.path.join(plot_dir, 'qlearning_ttt_learning_curve.png'),
+            'TTT — DQN':        os.path.join(plot_dir, 'dqn_ttt_learning_curve.png'),
+            'C4 — Q-Learning':  os.path.join(plot_dir, 'qlearning_c4_learning_curve.png'),
+            'C4 — DQN':         os.path.join(plot_dir, 'dqn_c4_learning_curve.png'),
+        }
+        fig, axes = plt.subplots(2, 2, figsize=(16, 10))
+        fig.suptitle('RL Agent Learning Curves (Win / Draw / Loss rate over training episodes)',
+                     fontsize=14, fontweight='bold')
+        for ax, (title, path) in zip(axes.flat, curve_files.items()):
+            if os.path.exists(path):
+                img = plt.imread(path)
+                ax.imshow(img)
+                ax.set_title(title, fontsize=12, fontweight='bold', pad=6)
+            else:
+                ax.text(0.5, 0.5, f'Missing:\n{os.path.basename(path)}\nRun --mode train first',
+                        ha='center', va='center', transform=ax.transAxes,
+                        fontsize=10, color='grey')
+            ax.axis('off')
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, filename), dpi=200, bbox_inches='tight')
+        plt.close()
+        print(f"  Saved {filename}")
+
+    # ------------------------------------------------------------------ #
+    # Run all                                                              #
+    # ------------------------------------------------------------------ #
+    print(f"\nGenerating plots → {plot_dir}/\n")
+
+    ttt_vs  = pd.read_csv(os.path.join(results_dir, 'ttt_vs_default.csv'))
+    c4_vs   = pd.read_csv(os.path.join(results_dir, 'c4_vs_default.csv'))
+    ttt_h2h = pd.read_csv(os.path.join(results_dir, 'ttt_head_to_head.csv'))
+    c4_h2h  = pd.read_csv(os.path.join(results_dir, 'c4_head_to_head.csv'))
+
+    plot_vs_default(ttt_vs,  'Tic Tac Toe', 'ttt_vs_default.png')
+    plot_vs_default(c4_vs,   'Connect 4',   'c4_vs_default.png')
+    plot_head_to_head(ttt_h2h, 'Tic Tac Toe', 'ttt_head_to_head.png')
+    plot_head_to_head(c4_h2h,  'Connect 4',   'c4_head_to_head.png')
+    plot_overall(ttt_vs, c4_vs, 'overall_comparison.png')
+    plot_learning_curves_summary('learning_curves_summary.png')
+
+    print(f"\nDone. All plots saved to {plot_dir}/")
 
 
 def mode_full_experiment(args):
@@ -391,7 +889,7 @@ def mode_full_experiment(args):
 
 def main():
     parser = argparse.ArgumentParser(description='AI Game Agents')
-    parser.add_argument('--mode', choices=['play', 'train', 'tournament', 'full-experiment', 'interactive'],
+    parser.add_argument('--mode', choices=['play', 'train', 'tournament', 'vs-default', 'head-to-head', 'generate-plots', 'full-experiment', 'interactive'],
                         default='play', help='Mode to run')
     parser.add_argument('--game', choices=['ttt', 'c4'], default='ttt', help='Game to play')
     parser.add_argument('--agent1', default='minimax', help='First agent')
@@ -404,6 +902,7 @@ def main():
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--verbose', action='store_true', help='Verbose output')
     parser.add_argument('--ui', action='store_true', help='Show game in a GUI window (play / interactive modes)')
+    parser.add_argument('--plot-dir', type=str, default=None, dest='plot_dir', help='Directory to save plots after training')
 
     args = parser.parse_args()
     set_seed(args.seed)
@@ -416,6 +915,12 @@ def main():
         mode_tournament(args)
     elif args.mode == 'interactive':
         mode_interactive(args)
+    elif args.mode == 'vs-default':
+        mode_vs_default(args)
+    elif args.mode == 'head-to-head':
+        mode_head_to_head(args)
+    elif args.mode == 'generate-plots':
+        mode_generate_plots(args)
     elif args.mode == 'full-experiment':
         mode_full_experiment(args)
 
