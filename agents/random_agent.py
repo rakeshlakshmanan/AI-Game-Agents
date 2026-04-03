@@ -1,7 +1,6 @@
 import random
 from agents.base_agent import BaseAgent
 
-
 class RandomAgent(BaseAgent):
     def __init__(self, player: int, name: str = "RandomAgent", seed: int = None):
         super().__init__(player, name)
