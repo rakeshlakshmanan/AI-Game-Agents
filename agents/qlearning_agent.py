@@ -22,14 +22,22 @@ class QLearningAgent(BaseAgent):
     def _get_q(self, state_key, action):
         return self.q_table.get((state_key, action), 0.0)
 
+    def state_key(self, game) -> str:
+        """Normalize board to agent's perspective so pieces are always +1 for self."""
+        if self.player == 1:
+            return game.get_state_key()
+        # flip signs so agent's pieces appear as +1 regardless of assigned player
+        import numpy as np
+        return str(tuple((-game.board).flatten()))
+
     def get_move(self, game) -> int:
         valid_moves = game.get_valid_moves()
         if not valid_moves:
             return None
         if random.random() < self.epsilon:
             return random.choice(valid_moves)
-        state_key = game.get_state_key()
-        q_values = {a: self._get_q(state_key, a) for a in valid_moves}
+        sk = self.state_key(game)
+        q_values = {a: self._get_q(sk, a) for a in valid_moves}
         return max(q_values, key=q_values.get)
 
     def learn(self, state, action, reward, next_state, done, valid_next_moves):
