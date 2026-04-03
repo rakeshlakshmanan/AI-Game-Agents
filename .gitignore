@@ -10,7 +10,5 @@ build/
 .vscode/
 *.pt
 *.pkl
-plots/
-models/
 # experiments/results/ — kept in git (contains scalability findings)
 .DS_Store
