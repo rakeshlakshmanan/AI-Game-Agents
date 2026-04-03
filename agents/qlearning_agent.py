@@ -3,7 +3,6 @@ import pickle
 import os
 from agents.base_agent import BaseAgent
 
-
 class QLearningAgent(BaseAgent):
     def __init__(self, player: int, name: str = "QLearning",
                  alpha: float = 0.1, gamma: float = 0.95,
@@ -23,10 +22,9 @@ class QLearningAgent(BaseAgent):
         return self.q_table.get((state_key, action), 0.0)
 
     def state_key(self, game) -> str:
-        """Normalize board to agent's perspective so pieces are always +1 for self."""
         if self.player == 1:
             return game.get_state_key()
-        # flip signs so agent's pieces appear as +1 regardless of assigned player
+                                                                                 
         import numpy as np
         return str(tuple((-game.board).flatten()))
 
