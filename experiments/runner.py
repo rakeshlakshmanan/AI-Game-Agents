@@ -3,10 +3,12 @@ import numpy as np
 from tqdm import tqdm
 
 
-def run_tournament(agent1, agent2, game_class, num_games: int = 1000, verbose: bool = False) -> dict:
+def run_tournament(agent1, agent2, game_class, num_games: int = 1000,
+                   verbose: bool = False, alternate: bool = True) -> dict:
     """
     Play num_games between agent1 and agent2.
-    Alternate who goes first each game.
+    alternate=True  → swap first player each game (fair comparison).
+    alternate=False → agent1 is always player 1, agent2 is always player -1.
     """
     agent1_wins = 0
     agent2_wins = 0
@@ -18,14 +20,11 @@ def run_tournament(agent1, agent2, game_class, num_games: int = 1000, verbose: b
         game = game_class()
         game.reset()
 
-        # alternate first player
-        if i % 2 == 0:
-            first, second = agent1, agent2
-        else:
+        if alternate and i % 2 == 1:
             first, second = agent2, agent1
+        else:
+            first, second = agent1, agent2
 
-        agents = {first.player: first, second.player: second}
-        # assign players for this game
         first.player = 1
         second.player = -1
 
@@ -37,12 +36,18 @@ def run_tournament(agent1, agent2, game_class, num_games: int = 1000, verbose: b
             moves += 1
             if done:
                 winner = info.get('winner')
-                if winner == agent1.player:
+                if winner == first.player and first is agent1:
                     agent1_wins += 1
                     results_per_game.append(1)
-                elif winner == agent2.player:
+                elif winner == second.player and second is agent2:
                     agent2_wins += 1
                     results_per_game.append(-1)
+                elif winner == first.player and first is agent2:
+                    agent2_wins += 1
+                    results_per_game.append(-1)
+                elif winner == second.player and second is agent1:
+                    agent1_wins += 1
+                    results_per_game.append(1)
                 else:
                     draws += 1
                     results_per_game.append(0)
@@ -95,46 +100,68 @@ def train_rl_agent(agent, opponent, game_class, num_episodes: int = 50000,
             opponent.player = 1
 
         current_player_id = 1  # player 1 always goes first
-        state = game.board.copy()
+
+        # Remember the agent's last board + action so we can complete the
+        # transition (with the correct next-state) after the opponent replies.
+        agent_board_before = None   # raw board before agent's move (for DQN)
+        prev_agent_sk     = None   # normalised state key before agent's move (Q-learning)
+        prev_agent_action = None
 
         while True:
             if current_player_id == agent.player:
+                # ---- Capture state BEFORE the agent moves ----
+                agent_board_before = game.board.copy()
+                if not is_dqn:
+                    prev_agent_sk = agent.state_key(game)
+
                 action = agent.get_move(game)
                 next_state, reward, done, info = game.make_move(action, agent.player)
+                prev_agent_action = action
 
-                if is_dqn:
-                    agent.store_transition(state, action, reward, next_state, done)
-                    agent.train_step()
-                else:
-                    valid_next = game.get_valid_moves()
-                    agent.learn(game.get_state_key() if not done else str(tuple(next_state.flatten())),
-                                action,
-                                reward if done else 0.0,
-                                str(tuple(next_state.flatten())),
-                                done,
-                                valid_next)
-
-                state = next_state
                 if done:
-                    break
-            else:
-                action = opponent.get_move(game)
-                next_state, reward, done, info = game.make_move(action, opponent.player)
-                if done:
-                    # agent lost or draw
-                    winner = info.get('winner')
-                    if winner == agent.player:
-                        agent_reward = 1.0
-                    elif winner == -agent.player:
-                        agent_reward = -1.0
-                    else:
-                        agent_reward = 0.3
+                    # Agent's move ended the game (win or draw) — store immediately
                     if is_dqn:
-                        agent.store_transition(state, action if action is not None else 0,
-                                               agent_reward, next_state, True)
-                    state = next_state
+                        agent.store_transition(agent_board_before, action, reward, next_state, done)
+                        agent.train_step()
+                    else:
+                        agent.learn(prev_agent_sk, action, reward, prev_agent_sk, True, [])
                     break
-                state = next_state
+                # Game continues — defer storing until we see opponent's reply
+
+            else:
+                opp_action = opponent.get_move(game)
+                next_state, _, done, info = game.make_move(opp_action, opponent.player)
+
+                if done:
+                    winner = info.get('winner')
+                    agent_reward = (1.0  if winner == agent.player  else
+                                    0.3  if winner == 0             else
+                                    -1.0)
+                else:
+                    agent_reward = 0.0
+
+                # Now we know the outcome — store the agent's pending transition
+                if agent_board_before is not None:
+                    if is_dqn:
+                        agent.store_transition(agent_board_before, prev_agent_action,
+                                               agent_reward, next_state, done)
+                        agent.train_step()
+                    else:
+                        if done:
+                            agent.learn(prev_agent_sk, prev_agent_action,
+                                        agent_reward, prev_agent_sk, True, [])
+                        else:
+                            next_sk = agent.state_key(game)
+                            agent.learn(prev_agent_sk, prev_agent_action,
+                                        0.0, next_sk, False, game.get_valid_moves())
+
+                    # Reset pending state
+                    agent_board_before = None
+                    prev_agent_sk      = None
+                    prev_agent_action  = None
+
+                if done:
+                    break
 
             current_player_id = -current_player_id
 
