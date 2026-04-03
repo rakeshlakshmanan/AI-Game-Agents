@@ -1,0 +1,9 @@
+game,algorithm,first_mover,matchup,num_games,algo_wins,algo_draws,algo_losses,algo_win_rate,algo_draw_rate,algo_loss_rate,avg_game_length
+TTT,MiniMax,MiniMax,MiniMax vs Default,100,0,100,0,0.0,1.0,0.0,9.0
+TTT,MiniMax,Default,Default vs MiniMax,100,0,100,0,0.0,1.0,0.0,9.0
+TTT,AlphaBeta,AlphaBeta,AlphaBeta vs Default,100,0,100,0,0.0,1.0,0.0,9.0
+TTT,AlphaBeta,Default,Default vs AlphaBeta,100,0,100,0,0.0,1.0,0.0,9.0
+TTT,QLearning,QLearning,QLearning vs Default,100,100,0,0,1.0,0.0,0.0,7.0
+TTT,QLearning,Default,Default vs QLearning,100,0,100,0,0.0,1.0,0.0,9.0
+TTT,DQN,DQN,DQN vs Default,100,0,100,0,0.0,1.0,0.0,9.0
+TTT,DQN,Default,Default vs DQN,100,0,0,100,0.0,0.0,1.0,7.0
