@@ -7,7 +7,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from games.tic_tac_toe import TicTacToe
 from games.connect4 import Connect4
 
-
 class TestTicTacToe:
     def test_reset(self):
         game = TicTacToe()
@@ -53,13 +52,13 @@ class TestTicTacToe:
     def test_draw(self):
         game = TicTacToe()
         game.reset()
-        # X O X / O X O / O X O -> draw
+                                       
         moves = [(0, 1), (1, -1), (2, 1), (3, -1), (4, 1), (5, -1), (6, -1), (7, 1), (8, -1)]
         for move, player in moves:
             if game.check_winner() is None:
                 game.make_move(move, player)
         result = game.check_winner()
-        assert result == 0 or result is not None  # either draw or game already over
+        assert result == 0 or result is not None                                    
 
     def test_no_winner_ongoing(self):
         game = TicTacToe()
@@ -88,7 +87,6 @@ class TestTicTacToe:
         key = game.get_state_key()
         assert isinstance(key, str)
 
-
 class TestConnect4:
     def test_reset(self):
         game = Connect4()
@@ -100,7 +98,7 @@ class TestConnect4:
         game = Connect4()
         game.reset()
         game.make_move(0, 1)
-        # piece should be at bottom row
+                                       
         assert game.board[5, 0] == 1
 
     def test_column_fills(self):
@@ -108,7 +106,7 @@ class TestConnect4:
         game.reset()
         for _ in range(6):
             game.make_move(0, 1 if _ % 2 == 0 else -1)
-        # column 0 full
+                       
         assert 0 not in game.get_valid_moves() or game.board[0, 0] != 0
 
     def test_horizontal_win(self):
@@ -124,21 +122,21 @@ class TestConnect4:
         for _ in range(4):
             game.make_move(0, 1)
             if _ < 3:
-                # keep column going
+                                   
                 pass
-        # Actually place 4 in same column
+                                         
         game2 = Connect4()
         game2.reset()
         for _ in range(4):
             game2.board[5-_, 0] = 1
-        # check manually
+                        
         winner = game2.check_winner()
         assert winner == 1
 
     def test_diagonal_win(self):
         game = Connect4()
         game.reset()
-        # manually place diagonal
+                                 
         for i in range(4):
             game.board[5-i, i] = 1
         assert game.check_winner() == 1
