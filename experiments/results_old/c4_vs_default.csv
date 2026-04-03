@@ -1,0 +1,5 @@
+agent,game,agent1_wins,agent2_wins,draws,agent1_win_rate,agent2_win_rate,draw_rate,avg_game_length
+MiniMax,Connect4,200,0,0,1.0,0.0,0.0,14.5
+AlphaBeta,Connect4,200,0,0,1.0,0.0,0.0,14.5
+QLearning,Connect4,0,200,0,0.0,1.0,0.0,8.5
+DQN,Connect4,0,200,0,0.0,1.0,0.0,7.5
