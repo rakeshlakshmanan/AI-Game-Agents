@@ -1,7 +1,6 @@
 import numpy as np
 from games.base_game import BaseGame
 
-
 class Connect4(BaseGame):
     ROWS = 6
     COLS = 7
@@ -29,7 +28,7 @@ class Connect4(BaseGame):
             return self.board.copy(), 0, True, {'winner': self.winner}
         if move not in self.get_valid_moves():
             return self.board.copy(), -1, True, {'winner': -player, 'invalid': True}
-        # find lowest empty row
+                               
         row = None
         for r in range(self.ROWS - 1, -1, -1):
             if self.board[r, move] == 0:
@@ -52,31 +51,31 @@ class Connect4(BaseGame):
 
     def check_winner(self) -> int:
         b = self.board
-        # horizontal
+                    
         for r in range(self.ROWS):
             for c in range(self.COLS - 3):
                 window = b[r, c:c+4]
                 if abs(window.sum()) == 4 and 0 not in window:
                     return b[r, c]
-        # vertical
+                  
         for r in range(self.ROWS - 3):
             for c in range(self.COLS):
                 window = b[r:r+4, c]
                 if abs(window.sum()) == 4 and 0 not in window:
                     return b[r, c]
-        # diagonal top-left to bottom-right
+                                           
         for r in range(self.ROWS - 3):
             for c in range(self.COLS - 3):
                 window = [b[r+i, c+i] for i in range(4)]
                 if abs(sum(window)) == 4 and 0 not in window:
                     return window[0]
-        # diagonal top-right to bottom-left
+                                           
         for r in range(self.ROWS - 3):
             for c in range(3, self.COLS):
                 window = [b[r+i, c-i] for i in range(4)]
                 if abs(sum(window)) == 4 and 0 not in window:
                     return window[0]
-        # draw
+              
         if len(self.get_valid_moves()) == 0:
             return 0
         return None
