@@ -7,7 +7,6 @@ from games.tic_tac_toe import TicTacToe
 from agents.random_agent import RandomAgent
 from experiments.runner import run_tournament
 
-
 class TestTournamentRunner:
     def test_game_count(self):
         a1 = RandomAgent(1, 'R1', seed=0)
