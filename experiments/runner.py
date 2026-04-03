@@ -2,14 +2,8 @@ import random
 import numpy as np
 from tqdm import tqdm
 
-
 def run_tournament(agent1, agent2, game_class, num_games: int = 1000,
                    verbose: bool = False, alternate: bool = True) -> dict:
-    """
-    Play num_games between agent1 and agent2.
-    alternate=True  → swap first player each game (fair comparison).
-    alternate=False → agent1 is always player 1, agent2 is always player -1.
-    """
     agent1_wins = 0
     agent2_wins = 0
     draws = 0
@@ -59,7 +53,7 @@ def run_tournament(agent1, agent2, game_class, num_games: int = 1000,
         if verbose:
             print(game.render())
 
-    # restore original players
+                              
     agent1.player = 1
     agent2.player = -1
 
@@ -74,14 +68,9 @@ def run_tournament(agent1, agent2, game_class, num_games: int = 1000,
         'results_per_game': results_per_game,
     }
 
-
 def train_rl_agent(agent, opponent, game_class, num_episodes: int = 50000,
                    eval_every: int = 1000, eval_games: int = 100,
                    seed: int = 42) -> list:
-    """
-    Train an RL agent against an opponent.
-    Returns training_history list.
-    """
     random.seed(seed)
     np.random.seed(seed)
     training_history = []
@@ -91,7 +80,7 @@ def train_rl_agent(agent, opponent, game_class, num_episodes: int = 50000,
         game = game_class()
         game.reset()
 
-        # alternate first player
+                                
         if episode % 2 == 0:
             agent.player = 1
             opponent.player = -1
@@ -99,17 +88,17 @@ def train_rl_agent(agent, opponent, game_class, num_episodes: int = 50000,
             agent.player = -1
             opponent.player = 1
 
-        current_player_id = 1  # player 1 always goes first
+        current_player_id = 1                              
 
-        # Remember the agent's last board + action so we can complete the
-        # transition (with the correct next-state) after the opponent replies.
-        agent_board_before = None   # raw board before agent's move (for DQN)
-        prev_agent_sk     = None   # normalised state key before agent's move (Q-learning)
+                                                                         
+                                                                              
+        agent_board_before = None                                            
+        prev_agent_sk     = None                                                          
         prev_agent_action = None
 
         while True:
             if current_player_id == agent.player:
-                # ---- Capture state BEFORE the agent moves ----
+                                                                
                 agent_board_before = game.board.copy()
                 if not is_dqn:
                     prev_agent_sk = agent.state_key(game)
@@ -119,14 +108,14 @@ def train_rl_agent(agent, opponent, game_class, num_episodes: int = 50000,
                 prev_agent_action = action
 
                 if done:
-                    # Agent's move ended the game (win or draw) — store immediately
+                                                                                   
                     if is_dqn:
                         agent.store_transition(agent_board_before, action, reward, next_state, done)
                         agent.train_step()
                     else:
                         agent.learn(prev_agent_sk, action, reward, prev_agent_sk, True, [])
                     break
-                # Game continues — defer storing until we see opponent's reply
+                                                                              
 
             else:
                 opp_action = opponent.get_move(game)
@@ -140,7 +129,7 @@ def train_rl_agent(agent, opponent, game_class, num_episodes: int = 50000,
                 else:
                     agent_reward = 0.0
 
-                # Now we know the outcome — store the agent's pending transition
+                                                                                
                 if agent_board_before is not None:
                     if is_dqn:
                         agent.store_transition(agent_board_before, prev_agent_action,
@@ -155,7 +144,7 @@ def train_rl_agent(agent, opponent, game_class, num_episodes: int = 50000,
                             agent.learn(prev_agent_sk, prev_agent_action,
                                         0.0, next_sk, False, game.get_valid_moves())
 
-                    # Reset pending state
+                                         
                     agent_board_before = None
                     prev_agent_sk      = None
                     prev_agent_action  = None
@@ -170,7 +159,7 @@ def train_rl_agent(agent, opponent, game_class, num_episodes: int = 50000,
         if episode % eval_every == 0:
             wins = draws = losses = 0
             saved_eps = agent.epsilon
-            agent.epsilon = 0.0  # greedy eval
+            agent.epsilon = 0.0               
 
             for g_idx in range(eval_games):
                 eval_game = game_class()
@@ -209,7 +198,7 @@ def train_rl_agent(agent, opponent, game_class, num_episodes: int = 50000,
                 'epsilon': agent.epsilon,
             })
 
-    # restore players
+                     
     agent.player = 1
     opponent.player = -1
     return training_history
