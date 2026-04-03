@@ -8,7 +8,6 @@ dist/
 build/
 .idea/
 .vscode/
-*.pt
 *.pkl
 # experiments/results/ — kept in git (contains scalability findings)
 .DS_Store
