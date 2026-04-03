@@ -1,6 +1,5 @@
 from agents.base_agent import BaseAgent
 
-
 class AlphaBetaAgent(BaseAgent):
     def __init__(self, player: int, name: str = "AlphaBeta", max_depth: int = None):
         super().__init__(player, name)
