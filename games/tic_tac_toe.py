@@ -2,7 +2,6 @@ import numpy as np
 import copy
 from games.base_game import BaseGame
 
-
 class TicTacToe(BaseGame):
     def __init__(self):
         self.board = np.zeros(9, dtype=int)
@@ -44,22 +43,22 @@ class TicTacToe(BaseGame):
 
     def check_winner(self) -> int:
         b = self.board.reshape(3, 3)
-        # rows
+              
         for row in b:
             if abs(row.sum()) == 3:
                 return row[0]
-        # cols
+              
         for col in b.T:
             if abs(col.sum()) == 3:
                 return col[0]
-        # diagonals
+                   
         d1 = b[0, 0] + b[1, 1] + b[2, 2]
         d2 = b[0, 2] + b[1, 1] + b[2, 0]
         if abs(d1) == 3:
             return b[1, 1]
         if abs(d2) == 3:
             return b[1, 1]
-        # draw
+              
         if 0 not in self.board:
             return 0
         return None
