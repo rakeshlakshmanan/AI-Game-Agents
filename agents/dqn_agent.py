@@ -79,8 +79,12 @@ class DQNAgent(BaseAgent):
         self.replay_buffer = deque(maxlen=replay_buffer_size)
         self.loss_history = []
 
-    def _state_to_tensor(self, state):
-        return torch.FloatTensor(state.flatten()).unsqueeze(0).to(self.device)
+    def _normalize(self, board: np.ndarray) -> np.ndarray:
+        """Flip board signs so agent's own pieces are always +1."""
+        return board * self.player
+
+    def _state_to_tensor(self, board: np.ndarray):
+        return torch.FloatTensor(self._normalize(board).flatten()).unsqueeze(0).to(self.device)
 
     def get_move(self, game) -> int:
         valid_moves = game.get_valid_moves()
@@ -98,13 +102,15 @@ class DQNAgent(BaseAgent):
         q_values = q_values + mask
         return q_values.argmax().item()
 
-    def store_transition(self, state, action, reward, next_state, done):
+    def store_transition(self, state: np.ndarray, action: int, reward: float,
+                         next_state: np.ndarray, done: bool):
+        """Store a (s, a, r, s', done) transition, normalized to agent's perspective."""
         self.replay_buffer.append((
-            state.flatten().copy(),
+            self._normalize(state).flatten().copy(),
             action,
             reward,
-            next_state.flatten().copy(),
-            done
+            self._normalize(next_state).flatten().copy(),
+            done,
         ))
 
     def train_step(self) -> float:
