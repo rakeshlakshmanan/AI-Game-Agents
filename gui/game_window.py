@@ -1,33 +1,20 @@
-"""
-GUI windows for Tic Tac Toe and Connect 4 using tkinter.
-
-Usage:
-    TicTacToeWindow(agent1, agent2).run()
-    Connect4Window(agent1, agent2).run()
-
-For human play, pass HumanGUIAgent as agent1 or agent2.
-"""
-
 import tkinter as tk
 
-
-# ---------------------------------------------------------------------------
-# Human placeholder agent (moves are injected by click events)
-# ---------------------------------------------------------------------------
+                                                                             
+                                                              
+                                                                             
 
 class HumanGUIAgent:
-    """Signals that a human is playing via the GUI. Clicks are handled by the window."""
     def __init__(self, player: int, name: str = "Human"):
         self.player = player
         self.name = name
 
     def get_move(self, game) -> int:
-        pass  # handled by GUI
+        pass                  
 
-
-# ---------------------------------------------------------------------------
-# Tic Tac Toe Window
-# ---------------------------------------------------------------------------
+                                                                             
+                    
+                                                                             
 
 class TicTacToeWindow:
     CELL = 140
@@ -40,10 +27,6 @@ class TicTacToeWindow:
     TEXT_COLOR = "#eaeaea"
 
     def __init__(self, agent1, agent2, move_delay: int = 700):
-        """
-        agent1 = player 1 (X), agent2 = player -1 (O).
-        move_delay: ms pause between AI moves (ignored for human moves).
-        """
         self.agent1 = agent1
         self.agent2 = agent2
         self.move_delay = move_delay
@@ -63,7 +46,7 @@ class TicTacToeWindow:
         self.root.configure(bg=self.BG)
         self.root.resizable(False, False)
 
-        # Title label
+                     
         tk.Label(
             self.root,
             text=f"{self.agent1.name}  (X)   vs   {self.agent2.name}  (O)",
@@ -71,7 +54,7 @@ class TicTacToeWindow:
             bg=self.BG, fg=self.TEXT_COLOR,
         ).pack(pady=(14, 4))
 
-        # Status label
+                      
         self.status_var = tk.StringVar(value="Game starting…")
         tk.Label(
             self.root, textvariable=self.status_var,
@@ -79,7 +62,7 @@ class TicTacToeWindow:
             bg=self.BG, fg="#aaaaaa",
         ).pack(pady=(0, 8))
 
-        # Canvas
+                
         self.canvas = tk.Canvas(
             self.root, width=board_w, height=board_h,
             bg=self.BOARD_BG, highlightthickness=2,
@@ -92,7 +75,7 @@ class TicTacToeWindow:
         self.root.after(400, self._next_move)
         self.root.mainloop()
 
-    # --- Drawing helpers ---
+                             
 
     def _draw_grid(self):
         p, c = self.PAD, self.CELL
@@ -102,7 +85,7 @@ class TicTacToeWindow:
             y = p + i * c
             self.canvas.create_line(p, y, p + 3 * c, y, fill=self.LINE_COLOR, width=3)
 
-        # cell hover highlight rectangles (hidden initially)
+                                                            
         for pos in range(9):
             row, col = divmod(pos, 3)
             x0 = p + col * c + 4
@@ -122,7 +105,7 @@ class TicTacToeWindow:
         cy = p + row * c + c // 2
         r = c // 2 - 18
 
-        if player == 1:  # X
+        if player == 1:     
             self.canvas.create_line(
                 cx - r, cy - r, cx + r, cy + r,
                 fill=self.X_COLOR, width=8, capstyle="round",
@@ -131,14 +114,13 @@ class TicTacToeWindow:
                 cx + r, cy - r, cx - r, cy + r,
                 fill=self.X_COLOR, width=8, capstyle="round",
             )
-        else:  # O
+        else:     
             self.canvas.create_oval(
                 cx - r, cy - r, cx + r, cy + r,
                 outline=self.O_COLOR, width=8,
             )
 
     def _highlight_winner(self):
-        """Draw a line through the winning three cells."""
         b = self.game.board.reshape(3, 3)
         p, c = self.PAD, self.CELL
 
@@ -166,7 +148,7 @@ class TicTacToeWindow:
                 )
                 break
 
-    # --- Game loop ---
+                       
 
     def _current_agent(self):
         return self.agent1 if self.game.current_player == 1 else self.agent2
@@ -217,10 +199,9 @@ class TicTacToeWindow:
         else:
             self.root.after(120, self._next_move)
 
-
-# ---------------------------------------------------------------------------
-# Connect 4 Window
-# ---------------------------------------------------------------------------
+                                                                             
+                  
+                                                                             
 
 class Connect4Window:
     CELL = 82
@@ -230,8 +211,8 @@ class Connect4Window:
     BG = "#1a1a2e"
     BOARD_BG = "#0f3460"
     EMPTY_COLOR = "#16213e"
-    P1_COLOR = "#e94560"   # red
-    P2_COLOR = "#f5a623"   # yellow
+    P1_COLOR = "#e94560"        
+    P2_COLOR = "#f5a623"           
     TEXT_COLOR = "#eaeaea"
 
     def __init__(self, agent1, agent2, move_delay: int = 700):
@@ -269,7 +250,7 @@ class Connect4Window:
             bg=self.BG, fg="#aaaaaa",
         ).pack(pady=(0, 6))
 
-        # Arrow row for hover indication
+                                        
         self.arrow_canvas = tk.Canvas(
             self.root, width=board_w, height=28,
             bg=self.BG, highlightthickness=0,
@@ -290,7 +271,7 @@ class Connect4Window:
         self.root.after(400, self._next_move)
         self.root.mainloop()
 
-    # --- Drawing helpers ---
+                             
 
     def _cell_center(self, row: int, col: int):
         p, c = self.PAD, self.CELL
@@ -325,7 +306,7 @@ class Connect4Window:
         cx, _ = self._cell_center(0, col)
         player = self.game.current_player
         color = self.P1_COLOR if player == 1 else self.P2_COLOR
-        # downward triangle
+                           
         self.arrow_canvas.create_polygon(
             cx, 24, cx - 12, 6, cx + 12, 6,
             fill=color, tags="arrow",
@@ -377,7 +358,7 @@ class Connect4Window:
                 outline="white", width=4,
             )
 
-    # --- Game loop ---
+                       
 
     def _current_agent(self):
         return self.agent1 if self.game.current_player == 1 else self.agent2
@@ -425,7 +406,7 @@ class Connect4Window:
         board_before = self.game.board.copy()
         _, _, done, info = self.game.make_move(col, player)
 
-        # find the row the piece landed in
+                                          
         for row in range(self.ROWS):
             if self.game.board[row, col] != board_before[row, col]:
                 self._draw_piece(row, col, player)
