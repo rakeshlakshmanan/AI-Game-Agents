@@ -12,14 +12,13 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
-
 class DQNNetwork(nn.Module if TORCH_AVAILABLE else object):
     def __init__(self, input_size: int, output_size: int):
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch required for DQNAgent")
         super().__init__()
         if input_size == 9:
-            # TTT architecture
+                              
             self.net = nn.Sequential(
                 nn.Linear(input_size, 128),
                 nn.ReLU(),
@@ -28,7 +27,7 @@ class DQNNetwork(nn.Module if TORCH_AVAILABLE else object):
                 nn.Linear(128, output_size),
             )
         else:
-            # Connect4 architecture
+                                   
             self.net = nn.Sequential(
                 nn.Linear(input_size, 256),
                 nn.ReLU(),
@@ -41,7 +40,6 @@ class DQNNetwork(nn.Module if TORCH_AVAILABLE else object):
 
     def forward(self, x):
         return self.net(x)
-
 
 class DQNAgent(BaseAgent):
     def __init__(self, player: int, name: str = "DQN",
@@ -80,7 +78,6 @@ class DQNAgent(BaseAgent):
         self.loss_history = []
 
     def _normalize(self, board: np.ndarray) -> np.ndarray:
-        """Flip board signs so agent's own pieces are always +1."""
         return board * self.player
 
     def _state_to_tensor(self, board: np.ndarray):
@@ -95,7 +92,7 @@ class DQNAgent(BaseAgent):
         state = self._state_to_tensor(game.board)
         with torch.no_grad():
             q_values = self.policy_net(state).squeeze()
-        # mask invalid actions
+                              
         mask = torch.full((self.output_size,), float('-inf'))
         for m in valid_moves:
             mask[m] = 0
@@ -104,7 +101,6 @@ class DQNAgent(BaseAgent):
 
     def store_transition(self, state: np.ndarray, action: int, reward: float,
                          next_state: np.ndarray, done: bool):
-        """Store a (s, a, r, s', done) transition, normalized to agent's perspective."""
         self.replay_buffer.append((
             self._normalize(state).flatten().copy(),
             action,
