@@ -19,16 +19,13 @@ COLORS = {
 }
 ALGO_COLORS = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c']
 
-
 def save_results_csv(data: dict, filename: str):
     filepath = os.path.join(RESULTS_DIR, filename)
     df = pd.DataFrame([data])
     df.to_csv(filepath, index=False)
     return filepath
 
-
 def plot_vs_default(results: dict, game_name: str, filename: str):
-    """Bar chart of win/draw/loss rates vs default opponent."""
     algos = list(results.keys())
     win_rates = [results[a]['agent1_win_rate'] for a in algos]
     draw_rates = [results[a]['draw_rate'] for a in algos]
@@ -54,9 +51,7 @@ def plot_vs_default(results: dict, game_name: str, filename: str):
     plt.savefig(os.path.join(PLOTS_DIR, filename), dpi=300)
     plt.close()
 
-
 def plot_head_to_head(matrix: np.ndarray, labels: list, game_name: str, filename: str):
-    """Heatmap of head-to-head win rates."""
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.heatmap(matrix, annot=True, fmt='.2f', cmap='RdYlGn',
                 xticklabels=labels, yticklabels=labels,
@@ -68,9 +63,7 @@ def plot_head_to_head(matrix: np.ndarray, labels: list, game_name: str, filename
     plt.savefig(os.path.join(PLOTS_DIR, filename), dpi=300)
     plt.close()
 
-
 def plot_learning_curve(history: list, agent_name: str, game_name: str, filename: str):
-    """Line plot of win rate over training episodes."""
     episodes = [h['episode'] for h in history]
     win_rates = [h['win_rate'] for h in history]
     draw_rates = [h['draw_rate'] for h in history]
@@ -88,9 +81,7 @@ def plot_learning_curve(history: list, agent_name: str, game_name: str, filename
     plt.savefig(os.path.join(PLOTS_DIR, filename), dpi=300)
     plt.close()
 
-
 def plot_nodes_explored(nodes_data: dict, filename: str):
-    """Bar chart comparing minimax vs alpha-beta node counts."""
     labels = list(nodes_data.keys())
     values = list(nodes_data.values())
 
@@ -106,9 +97,7 @@ def plot_nodes_explored(nodes_data: dict, filename: str):
     plt.savefig(os.path.join(PLOTS_DIR, filename), dpi=300)
     plt.close()
 
-
 def plot_overall_comparison(data: dict, filename: str):
-    """Summary bar chart of win rates across all algorithms and games."""
     algorithms = list(data.keys())
     games = list(next(iter(data.values())).keys())
 
