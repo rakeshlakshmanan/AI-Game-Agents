@@ -1,6 +1,5 @@
 from agents.base_agent import BaseAgent
 
-
 class MiniMaxAgent(BaseAgent):
     def __init__(self, player: int, name: str = "MiniMax", max_depth: int = None):
         super().__init__(player, name)
@@ -61,7 +60,6 @@ class MiniMaxAgent(BaseAgent):
             return best
 
     def _evaluate(self, game) -> float:
-        """Heuristic for Connect4 (used when depth limit reached)."""
         from games.connect4 import Connect4
         if not isinstance(game, Connect4):
             return 0
@@ -88,30 +86,30 @@ class MiniMaxAgent(BaseAgent):
                 s -= 80
             return s
 
-        # center column preference
+                                  
         center_col = list(b[:, cols // 2])
         score += center_col.count(self.player) * 5
         score -= center_col.count(-self.player) * 5
 
-        # horizontal
+                    
         for r in range(rows):
             for c in range(cols - 3):
                 window = b[r, c:c+4]
                 score += score_window(window, self.player)
 
-        # vertical
+                  
         for r in range(rows - 3):
             for c in range(cols):
                 window = b[r:r+4, c]
                 score += score_window(window, self.player)
 
-        # diagonal /
+                    
         for r in range(rows - 3):
             for c in range(cols - 3):
                 window = [b[r+i, c+i] for i in range(4)]
                 score += score_window(window, self.player)
 
-        # diagonal \
+                    
         for r in range(rows - 3):
             for c in range(3, cols):
                 window = [b[r+i, c-i] for i in range(4)]
